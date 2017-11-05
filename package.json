@@ -2,8 +2,10 @@
   "name": "stocks",
   "version": "0.1.0",
   "private": true,
+  "main": "main.js",
   "dependencies": {
     "react": "^16.0.0",
+    "react-datasheet": "^1.2.12",
     "react-dom": "^16.0.0",
     "react-scripts": "1.0.17"
   },
@@ -12,5 +14,10 @@
     "build": "react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject"
+  },
+  "devDependencies": {
+    "electron": "^1.7.9",
+    "enzyme": "^3.1.1",
+    "enzyme-adapter-react-16": "^1.0.4"
   }
 }

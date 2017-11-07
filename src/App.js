@@ -22,7 +22,8 @@ class App extends Component {
     return (
       <div>
         <h1>It's an App!</h1>
-        <StockTable data={this.state.data} update={updater} addRow={rowAdder}/>
+        {this.props.table(this.state.data, updater, rowAdder)}
+        {/* <StockTable data={this.state.data} update={updater} addRow={rowAdder}/> */}
       </div>
     )
   }

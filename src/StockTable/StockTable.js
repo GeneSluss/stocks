@@ -4,7 +4,6 @@ import ReactTable from "react-table";
 import "react-table/react-table.css";
 
 const isTradeOpen = (x) => {
-  console.log(x)
   if(x.BuyDate) {
     if(x.SellDate) {
       return "closed"
@@ -12,7 +11,7 @@ const isTradeOpen = (x) => {
       return "open"
     }
   } else {
-    return "pending"
+    return "pend"
   }
 }
 
@@ -24,21 +23,23 @@ const isTradeOpen = (x) => {
 
 //   }
 // )
-const PORTFOLIORISK = 0.05;
-const computeStopLoss = (x) => x.Support * 0.98;
-const computeRisk = (x) =>  x.Entry - computeStopLoss(x);
-const computeEstimatedShares = (x) => Math.floor(1000/computeRisk(x));
-const computeTradeCost = (x) => (x.Share * x.Price) + x.Commis;
+const PORTFOLIOSIZE = 100000;
+const PORTFOLIORISK = 0.005;
+const MAXHOLDINGSIZE = 24000;
+const computeStopLoss = (x) => Math.round(x.Support * 0.98 *100) /100;
+const computeRisk = (x) =>  Math.round( 100 * (x.Entry - computeStopLoss(x))) / 100;
+const computeEstimatedShares = (x) => Math.floor(Math.min(PORTFOLIOSIZE*PORTFOLIORISK/computeRisk(x), MAXHOLDINGSIZE/x.Price));
+const computeTradeCost = (x) => ((x.Share * x.Price) + x.Commis);
 const computeGain = (x) => {
   if (x.SellDate) {
-    return x.Shares * x.SellPrice - x.SellCommis - computeTradeCost(x);
+    return Math.round(100 * ( x.NumSold * x.SellPrice - x.SellCommis - computeTradeCost(x) ) / 100 );
   } else {
     return '';
   }
 }
 const computePctGain = (x) => {
   if( x.SellDate) {
-    return computeGain(x) / computeTradeCost(x);
+    return Math.round( 100 * 100 * computeGain(x) / computeTradeCost(x)) / 100;
   } else {
     return '';
   }
@@ -54,7 +55,6 @@ const dataColumn = (name) => {
 }
 
 const derivedColumn = (name, formula) => {
-  console.log(name, formula)
   return {
     name: name,
     editable: false,
@@ -63,6 +63,7 @@ const derivedColumn = (name, formula) => {
 }
 
 const columns = [
+  dataColumn("id"),
   derivedColumn("Active", isTradeOpen),
   dataColumn("BuyDate"),
   dataColumn("Symbol"),
@@ -79,7 +80,7 @@ const columns = [
   dataColumn("Commis"),
   derivedColumn("Total",computeTradeCost),
   dataColumn("SellDate"),
-  dataColumn("Shares"),
+  //dataColumn("Shares"),
   dataColumn("NumSold"),
   dataColumn("SellPrice"),
   dataColumn("SellCommis"),
@@ -87,59 +88,37 @@ const columns = [
   derivedColumn("PctGain",computePctGain),
 ]
 
-const dummyData = [{
-  BuyDate: 12345,
-  Symbol: "foo",
-  Notes: "this is a great trade",
-  Entry: 2,
-  Support: 1.9,
-  Target: 5,
-  Share: 10,
-  Price: 2,
-  Commis: 0.1,
-  SellDate: 54321,
-  Shares: 10,
-  NumSold: 10,
-  SellPrice: 6,
-  SellCommis: 0.4
-},
-{
-  BuyDate: 12345,
-  Symbol: "foo",
-  Notes: "this is a great trade",
-  Entry: 2,
-  Support: 1.9,
-  Target: 5,
-  Share: 10,
-  Price: 2,
-  Commis: 0.1,
-  SellDate: '',
-  Shares: 10,
-  NumSold: 10,
-  SellPrice: 6,
-  SellCommis: 0.4
-}]
 
 class StockTable extends Component {
 
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
+    console.log(props.data);
     this.state = {
-      data: dummyData
+      data: this.props.data
     }
     this.renderEditable = this.renderEditable.bind(this)
+  }
+
+  componentWillReceiveProps (props) {
+    console.log(props.data)
+    this.setState({data: props.data})
   }
 
   renderEditable (cellInfo) {  
     return (
       <div
-        style={{ backgroundColor: "#fafafa" }}
+        style={{ backgroundColor: "#fafafa", textAlign: "right" }}
         contentEditable
         suppressContentEditableWarning
         onBlur={e => {
           const data = [...this.state.data];
           data[cellInfo.index][cellInfo.column.id] = e.target.innerHTML;
           this.setState({ data });
+          console.log(data[cellInfo.index])
+          let updatedMapping = {}
+          updatedMapping[cellInfo.column.id] = data[cellInfo.index][cellInfo.column.id]
+          this.props.update(data[cellInfo.index].id, updatedMapping)
         }}
         dangerouslySetInnerHTML={{
           __html: this.state.data[cellInfo.index][cellInfo.column.id]
@@ -151,7 +130,9 @@ class StockTable extends Component {
   render () {
     return (
       <div className="stock-table">
+        <button onClick={this.props.addRow}>add a row!</button>
         <ReactTable
+        style={{ backgroundColor: "#efefef", textAlign: "right" }}
           data={this.state.data}
           columns={
             columns.map((column) => {

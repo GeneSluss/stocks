@@ -2,8 +2,10 @@
   "name": "stocks",
   "version": "0.1.0",
   "private": true,
-  "main": "main.js",
+  "main": "./main.js",
   "dependencies": {
+    "knex": "^0.13.0",
+    "pg": "^7.4.0",
     "react": "^16.0.0",
     "react-datasheet": "^1.2.12",
     "react-dom": "^16.0.0",

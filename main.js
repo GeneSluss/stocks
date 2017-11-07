@@ -1,10 +1,57 @@
-const {app, BrowserWindow} = require('electron')
+const {app, BrowserWindow, ipcMain} = require('electron')
 const path = require('path')
 const url = require('url')
+const knex = require('knex')({
+  client: 'pg',
+  version: '7.4.0',
+  connection: {
+    host : '127.0.0.1',
+    user : 'gsluss',
+    password : '',
+    database : 'stocker'
+  }
+})
+
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let win
+
+
+const dummyData = [{
+  id: 1,
+  BuyDate: 12345,
+  Symbol: "foo",
+  Notes: "this is a great trade",
+  Entry: 2,
+  Support: 1.9,
+  Target: 5,
+  Share: 10,
+  Price: 2,
+  Commis: 0.1,
+  SellDate: 54321,
+  Shares: 10,
+  NumSold: 10,
+  SellPrice: 6,
+  SellCommis: 0.4
+},
+{
+  id: 2,
+  BuyDate: 12345,
+  Symbol: "foo",
+  Notes: "this is a great trade",
+  Entry: 20,
+  Support: 19,
+  Target: 25,
+  Share: 10,
+  Price: 2,
+  Commis: 0.1,
+  SellDate: '',
+  Shares: 10,
+  NumSold: 10,
+  SellPrice: 6,
+  SellCommis: 0.4
+}]
 
 function createWindow () {
   // Create the browser window.
@@ -12,13 +59,53 @@ function createWindow () {
 
   // and load the index.html of the app.
   win.loadURL(url.format({
-    pathname: '//localhost:5000',
+    pathname: '//localhost:5000/',
     protocol: 'http:',
     slashes: true
   }))
 
   // Open the DevTools.
-  win.webContents.openDevTools()
+  // win.webContents.openDevTools()
+
+  ipcMain.on('data', (event, arg) => {
+    console.log('got some data', arg)
+    if(arg.method === 'get') {
+      //get some data
+      knex.select().from('stocks').on('query-response', (x) => {
+        event.sender.send('data', x)        
+      }).then(() => {})
+    } else if(arg.method === 'increment') {
+      const empty = {
+        BuyDate: null,
+        Symbol: null,
+        Notes: null,
+        Entry: null,
+        Support: null,
+        Target: null,
+        Share: null,
+        Price: null,
+        Commis: null,
+        SellDate: null,
+       // Shares: null,
+        NumSold: null,
+        SellPrice: null,
+        SellCommis: null
+      }
+      knex('stocks').insert(empty).then(() => {
+        knex.select().from('stocks').on('query-response', (x) => {}).then((x) => event.sender.send('data', x))
+      })
+    } else if(arg.method === 'update') {
+      //update the row at the column with the data
+      knex('stocks')
+        .where('id', '=', arg.row)
+        .update(arg.data)
+        .then((x) => {
+          console.log(x)
+          // event.sender.send()
+        })
+    }
+  })
+
 
   // Emitted when the window is closed.
   win.on('closed', () => {
@@ -29,10 +116,33 @@ function createWindow () {
   })
 }
 
+function createDatabase () {
+  knex.schema.createTableIfNotExists('stocks', function (table) {
+    table.increments()
+    table.integer('BuyDate')
+    table.string('Symbol')
+    table.string('Notes')
+    table.decimal('Entry')
+    table.decimal('Support')
+    table.decimal('Target')
+    table.integer('Share')
+    table.decimal('Price')
+    table.decimal('Commis')
+    table.integer('SellDate')
+ // table.decimal('Shares')
+    table.integer('NumSold')
+    table.decimal('SellPrice')
+    table.decimal('SellCommis')
+  }).then(() => {}) 
+}
+
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow)
+app.on('ready', () => {
+  createDatabase()
+  createWindow()
+})
 
 // Quit when all windows are closed.
 app.on('window-all-closed', () => {
